@@ -8,10 +8,10 @@
         /* === ESTILOS CSS === */
         html, body {
             width: 100%; height: 100%; margin: 0; padding: 0;
-            background: #000; overflow: hidden; touch-action: none; font-family: 'Arial Black', sans-serif;
+            background: #000; overflow: hidden; touch-action: none; 
+            font-family: 'Arial Black', sans-serif; /* Fuente gruesa e impactante */
         }
 
-        /* FONDO */
         body {
             background: #000 url('fondo-juego.png') no-repeat center center fixed;
             background-size: cover;
@@ -23,47 +23,55 @@
             z-index: 1;
         }
 
-        /* FORZAR PANTALLA COMPLETA */
+        /* Canvas Fullscreen */
         canvas { width: 100% !important; height: 100% !important; object-fit: fill; }
         
-        /* === NUEVO MARCADOR GLOBAL === */
+        /* === MARCADOR === */
         #score-board {
-            position: absolute; top: 10%; left: 0; width: 100%;
-            display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box;
+            position: absolute; top: 8%; left: 0; width: 100%;
+            display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box;
             z-index: 20; pointer-events: none;
-            text-shadow: 2px 2px 4px #000;
+            text-shadow: 3px 3px 0 #000;
         }
-        .score-box { text-align: center; }
-        .score-num { font-size: 50px; color: white; display: block; line-height: 1; }
-        .score-label { font-size: 14px; color: #ddd; text-transform: uppercase; letter-spacing: 1px; }
+        .score-box { text-align: center; transform: scale(1.2); } /* Más grande */
+        .score-num { font-size: 40px; color: white; display: block; line-height: 1; font-weight: 900; }
+        .score-label { font-size: 12px; color: #ddd; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
         
-        /* Colores de equipo */
-        #score-angel { color: #ffd700; text-shadow: 0 0 10px #ffd700; }
-        #score-demon { color: #ff3300; text-shadow: 0 0 10px #ff3300; }
-
-        /* Timer Central */
-        #ui-layer { position: absolute; top: 5%; left: 0; width: 100%; pointer-events: none; text-align: center; z-index: 20; }
-        .timer { color: white; font-size: 60px; font-weight: 900; text-shadow: 3px 3px 0 #000; }
+        /* Timer */
+        #ui-layer { position: absolute; top: 3%; left: 0; width: 100%; pointer-events: none; text-align: center; z-index: 20; }
+        .timer { color: white; font-size: 50px; font-weight: 900; text-shadow: 3px 3px 0 #000; letter-spacing: 2px; }
         
-        /* PANTALLA DE VICTORIA */
+        /* Pantalla Victoria */
         .winner-screen { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             display: none; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 999; backdrop-filter: blur(5px);
+            z-index: 999; backdrop-filter: blur(8px);
         }
-        .winner-title { font-size: 50px; margin-bottom: 10px; text-align: center; color: white; animation: pulse 0.5s infinite; }
+        .winner-title { 
+            font-size: 60px; margin-bottom: 20px; text-align: center; color: white; 
+            animation: pulse 0.5s infinite; text-transform: uppercase;
+            -webkit-text-stroke: 2px black;
+        }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .restart-count { font-weight: bold; color: white; font-size: 40px; margin-top: 20px;}
-
-        /* MVP Box */
-        .mvp-box { width: 90%; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; border: 2px solid #555; }
-        .mvp-row { display: flex; justify-content: space-between; color: white; font-size: 18px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .mvp-row:first-child { color: gold; font-weight: bold; font-size: 22px; }
         
-        /* Estilos Bando */
-        .win-angel h1 { text-shadow: 0 0 30px #ffd700; color: #ffd700; }
-        .win-demon h1 { text-shadow: 0 0 30px #ff3300; color: #ff3300; }
+        /* MVP Estilizado */
+        .mvp-box { 
+            width: 85%; background: rgba(30,30,30,0.8); 
+            border-radius: 15px; padding: 20px; 
+            border: 3px solid #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        .mvp-row { 
+            display: flex; justify-content: space-between; color: white; font-size: 20px; 
+            padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.2); 
+        }
+        .mvp-row:last-child { border-bottom: none; }
+        .mvp-row:first-child { color: #ffd700; font-size: 26px; text-shadow: 0 0 10px #ffd700; } /* 1ro brilla */
+
+        .win-angel h1 { text-shadow: 0 0 50px #ffd700; color: #ffd700; }
+        .win-angel .mvp-box { border-color: #ffd700; }
+        .win-demon h1 { text-shadow: 0 0 50px #ff3300; color: #ff3300; }
+        .win-demon .mvp-box { border-color: #ff3300; }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
@@ -73,30 +81,30 @@
 
     <div id="score-board">
         <div class="score-box">
-            <span class="score-num" id="scoreAngel">0</span>
-            <span class="score-label" style="color:#ffd700">Angels</span>
+            <span class="score-num" id="scoreAngel" style="color:#ffd700">0</span>
+            <span class="score-label">ANGELS</span>
         </div>
         <div class="score-box">
-            <span class="score-num" id="scoreDemon">0</span>
-            <span class="score-label" style="color:#ff3300">Demons</span>
+            <span class="score-num" id="scoreDemon" style="color:#ff3300">0</span>
+            <span class="score-label">DEMONS</span>
         </div>
     </div>
 
     <div id="ui-layer">
         <div class="timer" id="timerText">240</div>
-        <div style="color: yellow; font-size: 14px; margin-top: -5px;" id="statusText">Cargando...</div>
+        <div style="color: lime; font-size: 12px; font-weight:bold;" id="statusText">CONECTANDO...</div>
     </div>
 
     <div id="game-container"></div>
 
     <div id="winner-screen" class="winner-screen">
-        <h1 id="winnerText" class="winner-title">VICTORIA</h1>
+        <h1 id="winnerText" class="winner-title">GANADOR</h1>
         <div class="mvp-box">
-            <div style="color:white; text-align:center; font-weight:bold; margin-bottom:10px;">👑 MVP 👑</div>
+            <div style="color:white; text-align:center; font-weight:900; margin-bottom:15px; letter-spacing:3px;">👑 TOP MVP 👑</div>
             <div id="mvpList"></div>
         </div>
-        <div style="margin-top: 20px; color:#ccc;">Siguiente batalla en:</div>
-        <span id="restartCount" class="restart-count">10</span>
+        <div style="margin-top: 30px; color:#aaa; font-size: 18px;">Próxima batalla en:</div>
+        <span id="restartCount" class="restart-count" style="font-size: 50px; color: white; font-weight: bold;">10</span>
     </div>
 
     <script>
@@ -111,11 +119,7 @@
 
         const CONFIG = {
             type: Phaser.AUTO,
-            scale: {
-                mode: Phaser.Scale.resize, 
-                width: '100%', height: '100%', 
-                parent: 'game-container'
-            },
+            scale: { mode: Phaser.Scale.resize, width: '100%', height: '100%', parent: 'game-container' },
             transparent: true,
             scene: { preload: preload, create: create, update: update, resize: resize }
         };
@@ -123,17 +127,19 @@
         let game = new Phaser.Game(CONFIG);
         let socket;
         let player;
-        let particles;
         let centerX, centerY, gameHeight, gameWidth; 
         let currentPos = 50; 
         let targetY = 0;
         let gameActive = true;
         let timeLeft = 240;
         let usuarios = {}; 
-        
-        // VARIABLES GLOBALES DE PUNTUACIÓN
         let totalWinsAngel = 0;
         let totalWinsDemon = 0;
+
+        // Configuración de Colores
+        const COL_ANGEL = 0xffd700; // Dorado
+        const COL_DEMON = 0xff3300; // Rojo Fuego
+        const COL_NEUTRO = 0x0088ff; // Azul Eléctrico
 
         function preload() {
             this.load.image('bg', 'fondo-juego.png');
@@ -147,44 +153,46 @@
         function create() {
             updateDimensions(this);
 
-            // 1. FONDO
+            // FONDO
             let bgKey = this.textures.exists('bg') ? 'bg' : createFallbackTexture(this, 'bg_fallback', 0x111111);
             this.bg = this.add.image(centerX, centerY, bgKey);
             this.bg.setDisplaySize(Math.max(gameWidth, gameHeight), Math.max(gameWidth, gameHeight));
 
-            // 2. CARRIL
+            // CARRIL
             this.trackBorder = this.add.graphics();
             this.trackFill = this.add.graphics();
             this.trackLine = this.add.rectangle(centerX, centerY, 140, 4, 0xffffff).setAlpha(0.6);
 
-            // 3. JUGADOR
+            // JUGADOR
             let pKey = this.textures.exists('flame') ? 'flame' : createFallbackTexture(this, 'flame_fallback', 0x00ffff);
             player = this.add.sprite(centerX, centerY, pKey);
-            player.setDisplaySize(250, 250);
+            player.setDisplaySize(240, 240);
 
-            // 4. PARTICULAS (Estela básica)
-            let p = this.make.graphics().fillStyle(0x0088ff).fillCircle(5,5,5);
-            p.generateTexture('spark_simple', 10, 10);
-            particles = this.add.particles('spark_simple');
-            this.emitter = particles.createEmitter({
-                speed: 100, scale: { start: 1, end: 0 }, blendMode: 'ADD', follow: player
+            // SISTEMA DE PARTICULAS (Fuego)
+            let p = this.make.graphics().fillStyle(0xffffff).fillCircle(5,5,5);
+            p.generateTexture('particle_dot', 10, 10);
+            this.emitter = this.add.particles('particle_dot').createEmitter({
+                speed: { min: 50, max: 150 },
+                scale: { start: 1, end: 0 },
+                blendMode: 'ADD',
+                lifespan: 800,
+                follow: player,
+                tint: COL_NEUTRO // Empieza azul
             });
 
             drawTrack(this);
 
             this.time.addEvent({ delay: 1000, callback: onTimerTick, loop: true });
-            
-            // TOUCH DEBUG
+
+            // Touch de Prueba
             this.input.on('pointerdown', (pointer) => {
-                let userTest = "TestUser";
-                if(pointer.y < centerY) procesarInput(this, 'chat', 'angel', userTest);
-                else procesarInput(this, 'chat', 'demon', userTest);
-                
-                // Simular regalo al hacer click con fuerza (mantener presionado un poco en PC)
-                if(Math.random() > 0.8) procesarInput(this, 'gift', 'rose', userTest); 
+                let testNames = ["Juan", "Maria", "Carlos", "Ana", "Luisa"];
+                let randomName = testNames[Math.floor(Math.random() * testNames.length)];
+                if(pointer.y < centerY) procesarInput(this, 'chat', 'angel', randomName);
+                else procesarInput(this, 'chat', 'demon', randomName);
             });
-            
-            this.scale.on('resize', (gameSize) => {
+
+            this.scale.on('resize', () => {
                 updateDimensions(this);
                 this.bg.setPosition(centerX, centerY);
                 this.bg.setDisplaySize(Math.max(gameWidth, gameHeight * 1.2), Math.max(gameWidth, gameHeight * 1.2));
@@ -194,46 +202,32 @@
             conectarSocket(this);
         }
 
-        // --- SISTEMA DE LLUVIA DE EMOJIS ---
-        function spawnEmojiExplosion(scene, tipo, equipo) {
-            let emoji = "";
-            let color = "";
-            let cantidad = 5;
-            let velocidad = 200;
+        // --- SISTEMA DE NOMBRES FLOTANTES (EL DETALLE DE ORO) ---
+        function spawnFloatingName(scene, name, team) {
+            // Posición inicial aleatoria cerca del jugador
+            let startX = player.x + (Math.random() - 0.5) * 100;
+            let startY = player.y;
+            
+            // Configuración según equipo
+            let color = (team === "ANGEL") ? "#ffd700" : "#ff3300";
+            let velocityY = (team === "ANGEL") ? -200 : 200; // Ángeles suben, Demonios bajan
+            let shadow = (team === "ANGEL") ? "#000" : "#000";
 
-            if (equipo === "ANGEL") {
-                emoji = (tipo === 'gift') ? "⚔️" : "😇";
-                color = "#ffd700";
-            } else {
-                emoji = (tipo === 'gift') ? "🔥" : "😈";
-                color = "#ff3300";
-            }
+            let text = scene.add.text(startX, startY, name, {
+                fontFamily: 'Arial', fontSize: '24px', fontStyle: 'bold', color: color,
+                stroke: shadow, strokeThickness: 3
+            }).setOrigin(0.5);
 
-            if (tipo === 'gift') {
-                cantidad = 20; // Explosión grande
-                velocidad = 600;
-                scene.cameras.main.shake(200, 0.01); // TEMBLOR DE PANTALLA
-            }
-
-            // Crear texto flotante (Emojis)
-            for(let i=0; i<cantidad; i++) {
-                let x = player.x + (Math.random() - 0.5) * 100;
-                let y = player.y + (Math.random() - 0.5) * 100;
-                
-                let text = scene.add.text(x, y, emoji, { fontSize: '40px' });
-                text.setOrigin(0.5);
-                
-                // Física manual simple
-                scene.tweens.add({
-                    targets: text,
-                    x: x + (Math.random() - 0.5) * 300,
-                    y: y + (Math.random() - 0.5) * 300,
-                    alpha: 0,
-                    scale: 2,
-                    duration: 1000,
-                    onComplete: () => text.destroy()
-                });
-            }
+            // Animación: Se mueve hacia la meta de su equipo y se desvanece
+            scene.tweens.add({
+                targets: text,
+                y: startY + velocityY, // Moverse hacia arriba o abajo
+                x: startX + (Math.random() - 0.5) * 50, // Pequeña variación lateral
+                alpha: 0,
+                scale: 1.5,
+                duration: 1200,
+                onComplete: () => text.destroy()
+            });
         }
 
         function updateDimensions(scene) {
@@ -245,13 +239,11 @@
         }
 
         function drawTrack(scene) {
-            scene.trackBorder.clear();
-            scene.trackFill.clear();
-            let trackH = gameHeight - 200; 
-            let trackY = 100;
-            scene.trackBorder.fillStyle(0x888888, 0.4);
-            scene.trackBorder.fillRoundedRect(centerX - 66, trackY - 6, 132, trackH + 12, 60);
-            scene.trackFill.fillStyle(0x000000, 0.3);
+            scene.trackBorder.clear(); scene.trackFill.clear();
+            let trackH = gameHeight - 200; let trackY = 100;
+            scene.trackBorder.fillStyle(0x444444, 0.5); // Borde
+            scene.trackBorder.fillRoundedRect(centerX - 70, trackY - 10, 140, trackH + 20, 60);
+            scene.trackFill.fillStyle(0x000000, 0.4); // Interior
             scene.trackFill.fillRoundedRect(centerX - 60, trackY, 120, trackH, 60);
             scene.trackLine.setPosition(centerX, centerY);
         }
@@ -268,14 +260,34 @@
             targetY = 100 + (currentPos / 100 * trackH);
             player.y = Phaser.Math.Linear(player.y, targetY, 0.1);
             player.x = centerX;
-            player.scaleX = (250/player.width) + Math.sin(this.time.now / 200) * 0.05;
+
+            // --- DRAMA VISUAL (CAMBIO DE COLOR) ---
+            // Si Ángeles dominan (Posicion < 40)
+            if (currentPos < 40) {
+                player.setTint(COL_ANGEL); // Flama Dorada
+                this.emitter.setTint(COL_ANGEL); // Partículas Doradas
+            } 
+            // Si Demonios dominan (Posicion > 60)
+            else if (currentPos > 60) {
+                player.setTint(COL_DEMON); // Flama Roja
+                this.emitter.setTint(COL_DEMON); // Partículas Rojas
+            } 
+            // Neutral
+            else {
+                player.setTint(COL_NEUTRO); // Azul original
+                this.emitter.setTint(COL_NEUTRO);
+            }
+
+            // Latido más rápido si está cerca de ganar
+            let intensity = (Math.abs(currentPos - 50) / 50); // 0 en centro, 1 en bordes
+            let beatSpeed = 200 - (intensity * 100); 
+            player.scaleX = (240/player.width) + Math.sin(this.time.now / beatSpeed) * (0.05 + intensity * 0.05);
         }
 
         function conectarSocket(scene) {
             socket = io("https://tiktok-server-lmc9.onrender.com");
             socket.on('connect', () => {
-                document.getElementById('statusText').innerText = "EN LÍNEA";
-                document.getElementById('statusText').style.color = "#00ff00";
+                document.getElementById('statusText').innerText = "EN VIVO";
             });
             socket.on('chat', (data) => procesarInput(scene, 'chat', data.comment, data.user));
             socket.on('like', (data) => procesarInput(scene, 'like', '', data.user));
@@ -295,15 +307,13 @@
             if (tipo === 'chat' && dir !== 0) fuerza = 2;
             else if (tipo === 'like') { 
                 fuerza = 0.5; 
-                // Asignar equipo random para efectos visuales si es like
-                if(Math.random()>0.5) { dir = -1; equipo = "ANGEL"; } 
-                else { dir = 1; equipo = "DEMON"; }
+                if(Math.random()>0.5) { dir = -1; equipo = "ANGEL"; } else { dir = 1; equipo = "DEMON"; }
             }
             else if (tipo === 'gift') { 
                 fuerza = 15; 
-                if(Math.random()>0.5) { dir = -1; equipo = "ANGEL"; } 
-                else { dir = 1; equipo = "DEMON"; }
+                if(Math.random()>0.5) { dir = -1; equipo = "ANGEL"; } else { dir = 1; equipo = "DEMON"; }
                 reproducirSonido(scene, 'gift'); 
+                scene.cameras.main.shake(300, 0.01); // Temblor épico
             }
 
             if (dir !== 0) {
@@ -315,8 +325,8 @@
                 usuarios[nombreUsuario].puntos += fuerza; 
                 usuarios[nombreUsuario].equipo = (dir === -1 ? "😇" : "😈");
 
-                // EFECTOS VISUALES NUEVOS
-                spawnEmojiExplosion(scene, tipo, equipo);
+                // LANZAR NOMBRE (Solo si es chat o regalo, para no saturar con likes)
+                if (tipo !== 'like') spawnFloatingName(scene, nombreUsuario, equipo);
 
                 if (tipo !== 'gift' && Math.random() > 0.7) reproducirSonido(scene, 'hit');
                 chequearGanador(scene);
@@ -333,15 +343,15 @@
         }
 
         function chequearGanador(scene) {
-            if (currentPos <= 0) finalizarPartida(scene, "VICTORIA\nCELESTIAL", "angel");
-            else if (currentPos >= 100) finalizarPartida(scene, "VICTORIA\nINFERNAL", "demon");
+            if (currentPos <= 0) finalizarPartida(scene, "GANA ANGEL", "angel");
+            else if (currentPos >= 100) finalizarPartida(scene, "GANA DEMON", "demon");
         }
 
         function finalizarPartida(scene, texto, bando) {
             if(!gameActive) return;
             gameActive = false;
 
-            // ACTUALIZAR MARCADOR GLOBAL
+            // ACTUALIZAR MARCADOR
             if (bando === "angel") {
                 totalWinsAngel++;
                 document.getElementById('scoreAngel').innerText = totalWinsAngel;
@@ -354,7 +364,7 @@
             let mvpHtml = ranking.length === 0 ? "<div class='mvp-row'>Nadie puntuó...</div>" : "";
             ranking.forEach((u, index) => {
                 let medal = index === 0 ? "🥇" : (index === 1 ? "🥈" : "🥉");
-                mvpHtml += `<div class='mvp-row'><span>${medal} ${u[0]}</span><span>${Math.floor(u[1].puntos)}</span></div>`;
+                mvpHtml += `<div class='mvp-row'><span>${medal} ${u[0]}</span><span>${Math.floor(u[1].puntos)} pts</span></div>`;
             });
             document.getElementById('mvpList').innerHTML = mvpHtml;
 
@@ -381,7 +391,10 @@
             document.getElementById('timerText').innerText = timeLeft;
             document.getElementById('winner-screen').style.display = 'none';
             document.getElementById('mvpList').innerHTML = "";
-            if(player) player.y = centerY; 
+            if(player) {
+                player.y = centerY;
+                player.setTint(COL_NEUTRO); // Resetear color
+            }
         }
     </script>
 </body>
