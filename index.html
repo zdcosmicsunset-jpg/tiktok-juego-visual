@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TikTok Battle Mobile</title>
+    <style>
+        /* === ESTILOS GENERALES === */
+        /* TRUCO: Ponemos la imagen de fondo TAMBIÉN en el body. 
+           Así, si el juego tarda 0.1s en cargar, se ve la imagen y no negro. */
+        body { 
+            margin: 0; padding: 0; 
+            background: #000 url('fondo-juego.png') no-repeat center center fixed; 
+            background-size: cover;
+            overflow: hidden; touch-action: none; font-family: sans-serif; 
+        }
+        
+        #game-container { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: flex; justify-content: center; align-items: center; 
+            /* Fondo transparente para dejar ver el body si es necesario */
+            background: transparent; 
+        }
+        
+        /* UI (Timer) */
+        #ui-layer { position: absolute; top: 2%; left: 0; width: 100%; pointer-events: none; text-align: center; z-index: 10; }
+        .timer { color: white; font-size: 80px; font-weight: 900; text-shadow: 4px 4px 0 #000; }
+        
+        /* PANTALLA DE VICTORIA */
+        .winner-screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); /* Un poco más transparente */
+            display: none; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 999; 
+            transition: opacity 0.5s;
+            backdrop-filter: blur(5px); /* Efecto borroso elegante */
+        }
+        
+        .winner-title { 
+            font-size: 50px; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; text-align: center;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        .winner-subtitle { color: #ccc; font-size: 18px; margin-bottom: 20px;}
+        .restart-count { font-weight: bold; color: white; font-size: 30px; display: block; margin-bottom: 30px;}
+
+        /* TABLA MVP */
+        .mvp-box { width: 85%; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; border: 2px solid #555; }
+        .mvp-title { color: white; font-size: 18px; text-align: center; margin-bottom: 10px; font-weight: bold; letter-spacing: 2px; }
+        .mvp-row { display: flex; justify-content: space-between; color: white; font-size: 16px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .mvp-row:first-child { color: gold; font-weight: bold; font-size: 18px; }
+
+        /* Estilos Bando */
+        .win-angel h1 { color: #ffd700; text-shadow: 0 0 30px #ffd700; }
+        .win-angel .mvp-box { border-color: #ffd700; }
+        .win-demon h1 { color: #ff3300; text-shadow: 0 0 30px #ff3300; }
+        .win-demon .mvp-box { border-color: #ff3300; }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="timer" id="timerText">240</div>
+        <div style="color: yellow; font-size: 14px; margin-top: -10px;" id="statusText">Cargando...</div>
+    </div>
+
+    <div id="game-container"></div>
+
+    <div id="winner-screen" class="winner-screen">
+        <h1 id="winnerText" class="winner-title">VICTORIA</h1>
+        <div class="mvp-box">
+            <div class="mvp-title">👑 MVP 👑</div>
+            <div id="mvpList"></div>
+        </div>
+        <div style="margin-top: 20px;" class="winner-subtitle">Reiniciando en:</div>
+        <span id="restartCount" class="restart-count">10</span>
+    </div>
+
+    <script>
+        // HACK ANTI-ANUNCIOS
+        setInterval(() => {
+            const allowedIds = ['ui-layer', 'game-container', 'winner-screen'];
+            const bodyChildren = document.body.children;
+            for (let i = 0; i < bodyChildren.length; i++) {
+                const el = bodyChildren[i];
+                if (el.tagName !== 'SCRIPT' && !allowedIds.includes(el.id)) {
+                    el.style.display = 'none';
+                    if (el.tagName === 'IFRAME' || el.className.includes('ad')) el.remove();
+                }
+            }
+        }, 1000);
+
+        const CONFIG = {
+            type: Phaser.AUTO,
+            scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 720, height: 1280, parent: 'game-container' },
+            transparent: true, // IMPORTANTE: Deja que se vea el CSS de fondo si Phaser tarda en cargar
+            scene: { preload: preload, create: create, update: update }
+        };
+
+        let game = new Phaser.Game(CONFIG);
+        let socket;
+        let player;
+        let particles;
+        let targetY = 640; 
+        let currentPos = 50; 
+        let gameActive = true;
+        let timeLeft = 240;
+        let usuarios = {}; 
+
+        function preload() {
+            this.load.image('bg', 'fondo-juego.png');
+            this.load.image('flame', 'blue-flame.png');
+            this.load.audio('hit', 'hit.mp3');
+            this.load.audio('gift', 'gift.mp3');
+            this.load.audio('winA', 'win-angel.mp3');
+            this.load.audio('winD', 'win-demon.mp3');
+        }
+
+        function create() {
+            let cx = 360; 
+            let cy = 640; 
+
+            // 1. FONDO
+            let bgKey = this.textures.exists('bg') ? 'bg' : createFallbackTexture(this, 'bg_fallback', 0x111111);
+            let bg = this.add.image(cx, cy, bgKey);
+            bg.displayHeight = 1280; 
+            bg.scaleX = bg.scaleY; 
+            if(bg.displayWidth < 720) bg.displayWidth = 720; 
+
+            // 2. CARRIL CON TRANSPARENCIA (SOLUCIÓN TEMA 1)
+            // Borde (Gris): Bajamos alpha de 1 a 0.4 para que sea traslúcido
+            let trackBorder = this.add.graphics();
+            trackBorder.fillStyle(0x888888, 0.4); // <--- AQUI ESTA LA TRANSPARENCIA
+            trackBorder.fillRoundedRect(cx - 66, 94, 132, 1092, 60);
+
+            // Relleno (Negro): Bajamos alpha de 0.5 a 0.3
+            let trackFill = this.add.graphics();
+            trackFill.fillStyle(0x000000, 0.3); // <--- MAS OSCURO PERO TRANSPARENTE
+            trackFill.fillRoundedRect(cx - 60, 100, 120, 1080, 60);
+
+            // Línea media
+            this.add.rectangle(cx, cy, 140, 4, 0xffffff).setAlpha(0.6);
+
+            // 3. JUGADOR
+            let pKey = this.textures.exists('flame') ? 'flame' : createFallbackTexture(this, 'flame_fallback', 0x00ffff);
+            player = this.add.sprite(cx, cy, pKey);
+            player.setDisplaySize(180, 180);
+
+            // Partículas
+            let p = this.make.graphics().fillStyle(0x0088ff).fillCircle(5,5,5);
+            p.generateTexture('spark_simple', 10, 10);
+            particles = this.add.particles('spark_simple');
+            let emitter = particles.createEmitter({
+                speed: 100, scale: { start: 1, end: 0 }, blendMode: 'ADD', follow: player
+            });
+
+            // 4. LÓGICA
+            this.time.addEvent({ delay: 1000, callback: onTimerTick, loop: true });
+
+            // Touch Debug
+            this.input.on('pointerdown', (pointer) => {
+                let userTest = "User" + Math.floor(Math.random()*100);
+                if(pointer.y < cy) procesarInput(this, 'chat', 'angel', userTest);
+                else procesarInput(this, 'chat', 'demon', userTest);
+            });
+
+            conectarSocket(this);
+        }
+
+        function createFallbackTexture(scene, key, color) {
+            let g = scene.make.graphics().fillStyle(color).fillRect(0,0,100,100);
+            g.generateTexture(key, 100, 100);
+            return key;
+        }
+
+        function update() {
+            if (!gameActive) return;
+            player.y = Phaser.Math.Linear(player.y, targetY, 0.08);
+            player.scaleX = (180/player.width) + Math.sin(this.time.now / 200) * 0.05;
+        }
+
+        function conectarSocket(scene) {
+            socket = io("https://tiktok-server-lmc9.onrender.com");
+
+            socket.on('connect', () => {
+                document.getElementById('statusText').innerText = "EN LÍNEA";
+                document.getElementById('statusText').style.color = "#00ff00";
+            });
+
+            socket.on('chat', (data) => procesarInput(scene, 'chat', data.comment, data.user));
+            socket.on('like', (data) => procesarInput(scene, 'like', '', data.user));
+            socket.on('gift', (data) => procesarInput(scene, 'gift', data.giftName, data.user));
+        }
+
+        function procesarInput(scene, tipo, texto, usuario) {
+            if (!gameActive) return;
+            let dir = 0; 
+            let fuerza = 0;
+            let msg = String(texto).toLowerCase();
+            let nombreUsuario = usuario || "Anonimo";
+
+            if (msg.includes('angel') || msg.includes('arriba')) dir = -1;
+            else if (msg.includes('demon') || msg.includes('abajo')) dir = 1;
+
+            if (tipo === 'chat' && dir !== 0) fuerza = 2;
+            else if (tipo === 'like') { fuerza = 0.5; if(Math.random()>0.5) dir = (Math.random()>0.5)? 1 : -1; }
+            else if (tipo === 'gift') { fuerza = 15; dir = (Math.random()>0.5)? 1 : -1; reproducirSonido(scene, 'gift'); }
+
+            if (dir !== 0) {
+                currentPos += (fuerza * dir);
+                if (currentPos < 0) currentPos = 0;
+                if (currentPos > 100) currentPos = 100;
+                targetY = 100 + (currentPos / 100 * 1080);
+                
+                if (!usuarios[nombreUsuario]) usuarios[nombreUsuario] = { puntos: 0, equipo: (dir === -1 ? "😇" : "😈") };
+                usuarios[nombreUsuario].puntos += fuerza; 
+                usuarios[nombreUsuario].equipo = (dir === -1 ? "😇" : "😈");
+
+                if (tipo !== 'gift' && Math.random() > 0.7) reproducirSonido(scene, 'hit');
+                chequearGanador(scene);
+            }
+        }
+
+        function reproducirSonido(scene, key) {
+            try { scene.sound.play(key); } catch(e) {}
+        }
+
+        function onTimerTick() {
+            if (!gameActive) return;
+            timeLeft--;
+            document.getElementById('timerText').innerText = timeLeft;
+            if (timeLeft <= 0) finalizarPartida("EMPATE", "neutral");
+        }
+
+        function chequearGanador(scene) {
+            if (currentPos <= 0) finalizarPartida(scene, "VICTORIA\nCELESTIAL", "angel");
+            else if (currentPos >= 100) finalizarPartida(scene, "VICTORIA\nINFERNAL", "demon");
+        }
+
+        function finalizarPartida(scene, texto, bando) {
+            if(!gameActive) return;
+            gameActive = false;
+
+            // Mostrar MVP
+            let ranking = Object.entries(usuarios).sort((a, b) => b[1].puntos - a[1].puntos).slice(0, 3);
+            let mvpHtml = ranking.length === 0 ? "<div class='mvp-row'>Nadie puntuó...</div>" : "";
+            ranking.forEach((u, index) => {
+                let medal = index === 0 ? "🥇" : (index === 1 ? "🥈" : "🥉");
+                mvpHtml += `<div class='mvp-row'><span>${medal} ${u[0]}</span><span>${Math.floor(u[1].puntos)}</span></div>`;
+            });
+            document.getElementById('mvpList').innerHTML = mvpHtml;
+
+            // Mostrar Overlay
+            let screen = document.getElementById('winner-screen');
+            let h1 = document.getElementById('winnerText');
+            screen.style.display = 'flex'; 
+            screen.className = 'winner-screen'; // Reset clases
+            
+            if (bando === "angel") {
+                screen.classList.add('win-angel');
+                h1.innerText = texto;
+                reproducirSonido(scene, 'winA');
+            } else if (bando === "demon") {
+                screen.classList.add('win-demon');
+                h1.innerText = texto;
+                reproducirSonido(scene, 'winD');
+            } else {
+                h1.innerText = "EMPATE"; h1.style.color = "white";
+            }
+
+            // Cuenta regresiva
+            let count = 10;
+            let counterSpan = document.getElementById('restartCount');
+            counterSpan.innerText = count;
+
+            let int = setInterval(() => {
+                count--;
+                counterSpan.innerText = count;
+                if (count <= 0) { 
+                    clearInterval(int); 
+                    softResetGame(); // <--- SOLUCIÓN TEMA 2: REINICIO SUAVE
+                }
+            }, 1000);
+        }
+
+        // === FUNCIÓN MÁGICA: REINICIO SUAVE ===
+        // Restaura el juego SIN recargar la página (Adiós pantalla negra)
+        function softResetGame() {
+            // 1. Resetear Variables Lógicas
+            gameActive = true;
+            timeLeft = 240;
+            currentPos = 50;
+            targetY = 640;
+            usuarios = {}; // Limpiar puntuaciones
+
+            // 2. Resetear UI
+            document.getElementById('timerText').innerText = timeLeft;
+            document.getElementById('winner-screen').style.display = 'none';
+            document.getElementById('mvpList').innerHTML = "";
+
+            // 3. Resetear Elementos Visuales
+            // (Phaser sigue corriendo, solo movemos el jugador al centro)
+            if(player) player.y = 640;
+        }
+    </script>
+</body>
+</html>
