@@ -2,61 +2,68 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TikTok Battle Mobile</title>
     <style>
-        /* === ESTILOS GENERALES === */
-        /* TRUCO: Ponemos la imagen de fondo TAMBIÉN en el body. 
-           Así, si el juego tarda 0.1s en cargar, se ve la imagen y no negro. */
-        body { 
-            margin: 0; padding: 0; 
-            background: #000 url('fondo-juego.png') no-repeat center center fixed; 
+        /* === ESTILOS CSS === */
+        html, body {
+            width: 100%; height: 100%; margin: 0; padding: 0;
+            background: #000; overflow: hidden; touch-action: none; font-family: 'Arial Black', sans-serif;
+        }
+
+        /* FONDO */
+        body {
+            background: #000 url('fondo-juego.png') no-repeat center center fixed;
             background-size: cover;
-            overflow: hidden; touch-action: none; font-family: sans-serif; 
         }
-        
-        #game-container { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            display: flex; justify-content: center; align-items: center; 
-            /* Fondo transparente para dejar ver el body si es necesario */
-            background: transparent; 
+
+        #game-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1;
         }
+
+        /* FORZAR PANTALLA COMPLETA */
+        canvas { width: 100% !important; height: 100% !important; object-fit: fill; }
         
-        /* UI (Timer) */
-        #ui-layer { position: absolute; top: 2%; left: 0; width: 100%; pointer-events: none; text-align: center; z-index: 10; }
-        .timer { color: white; font-size: 80px; font-weight: 900; text-shadow: 4px 4px 0 #000; }
+        /* === NUEVO MARCADOR GLOBAL === */
+        #score-board {
+            position: absolute; top: 10%; left: 0; width: 100%;
+            display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box;
+            z-index: 20; pointer-events: none;
+            text-shadow: 2px 2px 4px #000;
+        }
+        .score-box { text-align: center; }
+        .score-num { font-size: 50px; color: white; display: block; line-height: 1; }
+        .score-label { font-size: 14px; color: #ddd; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Colores de equipo */
+        #score-angel { color: #ffd700; text-shadow: 0 0 10px #ffd700; }
+        #score-demon { color: #ff3300; text-shadow: 0 0 10px #ff3300; }
+
+        /* Timer Central */
+        #ui-layer { position: absolute; top: 5%; left: 0; width: 100%; pointer-events: none; text-align: center; z-index: 20; }
+        .timer { color: white; font-size: 60px; font-weight: 900; text-shadow: 3px 3px 0 #000; }
         
         /* PANTALLA DE VICTORIA */
         .winner-screen { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.85); /* Un poco más transparente */
-            display: none; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 999; 
-            transition: opacity 0.5s;
-            backdrop-filter: blur(5px); /* Efecto borroso elegante */
+            background: rgba(0,0,0,0.85);
+            display: none; flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 999; backdrop-filter: blur(5px);
         }
-        
-        .winner-title { 
-            font-size: 50px; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; text-align: center;
-            animation: pulse 1s infinite;
-        }
+        .winner-title { font-size: 50px; margin-bottom: 10px; text-align: center; color: white; animation: pulse 0.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .restart-count { font-weight: bold; color: white; font-size: 40px; margin-top: 20px;}
+
+        /* MVP Box */
+        .mvp-box { width: 90%; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; border: 2px solid #555; }
+        .mvp-row { display: flex; justify-content: space-between; color: white; font-size: 18px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .mvp-row:first-child { color: gold; font-weight: bold; font-size: 22px; }
         
-        .winner-subtitle { color: #ccc; font-size: 18px; margin-bottom: 20px;}
-        .restart-count { font-weight: bold; color: white; font-size: 30px; display: block; margin-bottom: 30px;}
-
-        /* TABLA MVP */
-        .mvp-box { width: 85%; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; border: 2px solid #555; }
-        .mvp-title { color: white; font-size: 18px; text-align: center; margin-bottom: 10px; font-weight: bold; letter-spacing: 2px; }
-        .mvp-row { display: flex; justify-content: space-between; color: white; font-size: 16px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .mvp-row:first-child { color: gold; font-weight: bold; font-size: 18px; }
-
         /* Estilos Bando */
-        .win-angel h1 { color: #ffd700; text-shadow: 0 0 30px #ffd700; }
-        .win-angel .mvp-box { border-color: #ffd700; }
-        .win-demon h1 { color: #ff3300; text-shadow: 0 0 30px #ff3300; }
-        .win-demon .mvp-box { border-color: #ff3300; }
+        .win-angel h1 { text-shadow: 0 0 30px #ffd700; color: #ffd700; }
+        .win-demon h1 { text-shadow: 0 0 30px #ff3300; color: #ff3300; }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
@@ -64,9 +71,20 @@
 </head>
 <body>
 
+    <div id="score-board">
+        <div class="score-box">
+            <span class="score-num" id="scoreAngel">0</span>
+            <span class="score-label" style="color:#ffd700">Angels</span>
+        </div>
+        <div class="score-box">
+            <span class="score-num" id="scoreDemon">0</span>
+            <span class="score-label" style="color:#ff3300">Demons</span>
+        </div>
+    </div>
+
     <div id="ui-layer">
         <div class="timer" id="timerText">240</div>
-        <div style="color: yellow; font-size: 14px; margin-top: -10px;" id="statusText">Cargando...</div>
+        <div style="color: yellow; font-size: 14px; margin-top: -5px;" id="statusText">Cargando...</div>
     </div>
 
     <div id="game-container"></div>
@@ -74,43 +92,48 @@
     <div id="winner-screen" class="winner-screen">
         <h1 id="winnerText" class="winner-title">VICTORIA</h1>
         <div class="mvp-box">
-            <div class="mvp-title">👑 MVP 👑</div>
+            <div style="color:white; text-align:center; font-weight:bold; margin-bottom:10px;">👑 MVP 👑</div>
             <div id="mvpList"></div>
         </div>
-        <div style="margin-top: 20px;" class="winner-subtitle">Reiniciando en:</div>
+        <div style="margin-top: 20px; color:#ccc;">Siguiente batalla en:</div>
         <span id="restartCount" class="restart-count">10</span>
     </div>
 
     <script>
         // HACK ANTI-ANUNCIOS
         setInterval(() => {
-            const allowedIds = ['ui-layer', 'game-container', 'winner-screen'];
-            const bodyChildren = document.body.children;
-            for (let i = 0; i < bodyChildren.length; i++) {
-                const el = bodyChildren[i];
-                if (el.tagName !== 'SCRIPT' && !allowedIds.includes(el.id)) {
-                    el.style.display = 'none';
-                    if (el.tagName === 'IFRAME' || el.className.includes('ad')) el.remove();
-                }
+            const allowedIds = ['ui-layer', 'game-container', 'winner-screen', 'score-board'];
+            for (let i = 0; i < document.body.children.length; i++) {
+                const el = document.body.children[i];
+                if (el.tagName !== 'SCRIPT' && !allowedIds.includes(el.id)) el.style.display = 'none';
             }
         }, 1000);
 
         const CONFIG = {
             type: Phaser.AUTO,
-            scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 720, height: 1280, parent: 'game-container' },
-            transparent: true, // IMPORTANTE: Deja que se vea el CSS de fondo si Phaser tarda en cargar
-            scene: { preload: preload, create: create, update: update }
+            scale: {
+                mode: Phaser.Scale.resize, 
+                width: '100%', height: '100%', 
+                parent: 'game-container'
+            },
+            transparent: true,
+            scene: { preload: preload, create: create, update: update, resize: resize }
         };
 
         let game = new Phaser.Game(CONFIG);
         let socket;
         let player;
         let particles;
-        let targetY = 640; 
+        let centerX, centerY, gameHeight, gameWidth; 
         let currentPos = 50; 
+        let targetY = 0;
         let gameActive = true;
         let timeLeft = 240;
         let usuarios = {}; 
+        
+        // VARIABLES GLOBALES DE PUNTUACIÓN
+        let totalWinsAngel = 0;
+        let totalWinsDemon = 0;
 
         function preload() {
             this.load.image('bg', 'fondo-juego.png');
@@ -122,76 +145,138 @@
         }
 
         function create() {
-            let cx = 360; 
-            let cy = 640; 
+            updateDimensions(this);
 
             // 1. FONDO
             let bgKey = this.textures.exists('bg') ? 'bg' : createFallbackTexture(this, 'bg_fallback', 0x111111);
-            let bg = this.add.image(cx, cy, bgKey);
-            bg.displayHeight = 1280; 
-            bg.scaleX = bg.scaleY; 
-            if(bg.displayWidth < 720) bg.displayWidth = 720; 
+            this.bg = this.add.image(centerX, centerY, bgKey);
+            this.bg.setDisplaySize(Math.max(gameWidth, gameHeight), Math.max(gameWidth, gameHeight));
 
-            // 2. CARRIL CON TRANSPARENCIA (SOLUCIÓN TEMA 1)
-            // Borde (Gris): Bajamos alpha de 1 a 0.4 para que sea traslúcido
-            let trackBorder = this.add.graphics();
-            trackBorder.fillStyle(0x888888, 0.4); // <--- AQUI ESTA LA TRANSPARENCIA
-            trackBorder.fillRoundedRect(cx - 66, 94, 132, 1092, 60);
-
-            // Relleno (Negro): Bajamos alpha de 0.5 a 0.3
-            let trackFill = this.add.graphics();
-            trackFill.fillStyle(0x000000, 0.3); // <--- MAS OSCURO PERO TRANSPARENTE
-            trackFill.fillRoundedRect(cx - 60, 100, 120, 1080, 60);
-
-            // Línea media
-            this.add.rectangle(cx, cy, 140, 4, 0xffffff).setAlpha(0.6);
+            // 2. CARRIL
+            this.trackBorder = this.add.graphics();
+            this.trackFill = this.add.graphics();
+            this.trackLine = this.add.rectangle(centerX, centerY, 140, 4, 0xffffff).setAlpha(0.6);
 
             // 3. JUGADOR
             let pKey = this.textures.exists('flame') ? 'flame' : createFallbackTexture(this, 'flame_fallback', 0x00ffff);
-            player = this.add.sprite(cx, cy, pKey);
-            player.setDisplaySize(180, 180);
+            player = this.add.sprite(centerX, centerY, pKey);
+            player.setDisplaySize(250, 250);
 
-            // Partículas
+            // 4. PARTICULAS (Estela básica)
             let p = this.make.graphics().fillStyle(0x0088ff).fillCircle(5,5,5);
             p.generateTexture('spark_simple', 10, 10);
             particles = this.add.particles('spark_simple');
-            let emitter = particles.createEmitter({
+            this.emitter = particles.createEmitter({
                 speed: 100, scale: { start: 1, end: 0 }, blendMode: 'ADD', follow: player
             });
 
-            // 4. LÓGICA
-            this.time.addEvent({ delay: 1000, callback: onTimerTick, loop: true });
+            drawTrack(this);
 
-            // Touch Debug
+            this.time.addEvent({ delay: 1000, callback: onTimerTick, loop: true });
+            
+            // TOUCH DEBUG
             this.input.on('pointerdown', (pointer) => {
-                let userTest = "User" + Math.floor(Math.random()*100);
-                if(pointer.y < cy) procesarInput(this, 'chat', 'angel', userTest);
+                let userTest = "TestUser";
+                if(pointer.y < centerY) procesarInput(this, 'chat', 'angel', userTest);
                 else procesarInput(this, 'chat', 'demon', userTest);
+                
+                // Simular regalo al hacer click con fuerza (mantener presionado un poco en PC)
+                if(Math.random() > 0.8) procesarInput(this, 'gift', 'rose', userTest); 
+            });
+            
+            this.scale.on('resize', (gameSize) => {
+                updateDimensions(this);
+                this.bg.setPosition(centerX, centerY);
+                this.bg.setDisplaySize(Math.max(gameWidth, gameHeight * 1.2), Math.max(gameWidth, gameHeight * 1.2));
+                drawTrack(this);
             });
 
             conectarSocket(this);
         }
 
+        // --- SISTEMA DE LLUVIA DE EMOJIS ---
+        function spawnEmojiExplosion(scene, tipo, equipo) {
+            let emoji = "";
+            let color = "";
+            let cantidad = 5;
+            let velocidad = 200;
+
+            if (equipo === "ANGEL") {
+                emoji = (tipo === 'gift') ? "⚔️" : "😇";
+                color = "#ffd700";
+            } else {
+                emoji = (tipo === 'gift') ? "🔥" : "😈";
+                color = "#ff3300";
+            }
+
+            if (tipo === 'gift') {
+                cantidad = 20; // Explosión grande
+                velocidad = 600;
+                scene.cameras.main.shake(200, 0.01); // TEMBLOR DE PANTALLA
+            }
+
+            // Crear texto flotante (Emojis)
+            for(let i=0; i<cantidad; i++) {
+                let x = player.x + (Math.random() - 0.5) * 100;
+                let y = player.y + (Math.random() - 0.5) * 100;
+                
+                let text = scene.add.text(x, y, emoji, { fontSize: '40px' });
+                text.setOrigin(0.5);
+                
+                // Física manual simple
+                scene.tweens.add({
+                    targets: text,
+                    x: x + (Math.random() - 0.5) * 300,
+                    y: y + (Math.random() - 0.5) * 300,
+                    alpha: 0,
+                    scale: 2,
+                    duration: 1000,
+                    onComplete: () => text.destroy()
+                });
+            }
+        }
+
+        function updateDimensions(scene) {
+            gameWidth = scene.scale.width;
+            gameHeight = scene.scale.height;
+            centerX = gameWidth / 2;
+            centerY = gameHeight / 2;
+            targetY = 100 + (currentPos / 100 * (gameHeight - 200));
+        }
+
+        function drawTrack(scene) {
+            scene.trackBorder.clear();
+            scene.trackFill.clear();
+            let trackH = gameHeight - 200; 
+            let trackY = 100;
+            scene.trackBorder.fillStyle(0x888888, 0.4);
+            scene.trackBorder.fillRoundedRect(centerX - 66, trackY - 6, 132, trackH + 12, 60);
+            scene.trackFill.fillStyle(0x000000, 0.3);
+            scene.trackFill.fillRoundedRect(centerX - 60, trackY, 120, trackH, 60);
+            scene.trackLine.setPosition(centerX, centerY);
+        }
+        
+        function resize (gameSize, baseSize, displaySize, resolution) { updateDimensions(this); }
         function createFallbackTexture(scene, key, color) {
             let g = scene.make.graphics().fillStyle(color).fillRect(0,0,100,100);
-            g.generateTexture(key, 100, 100);
-            return key;
+            g.generateTexture(key, 100, 100); return key;
         }
 
         function update() {
             if (!gameActive) return;
-            player.y = Phaser.Math.Linear(player.y, targetY, 0.08);
-            player.scaleX = (180/player.width) + Math.sin(this.time.now / 200) * 0.05;
+            let trackH = gameHeight - 200;
+            targetY = 100 + (currentPos / 100 * trackH);
+            player.y = Phaser.Math.Linear(player.y, targetY, 0.1);
+            player.x = centerX;
+            player.scaleX = (250/player.width) + Math.sin(this.time.now / 200) * 0.05;
         }
 
         function conectarSocket(scene) {
             socket = io("https://tiktok-server-lmc9.onrender.com");
-
             socket.on('connect', () => {
                 document.getElementById('statusText').innerText = "EN LÍNEA";
                 document.getElementById('statusText').style.color = "#00ff00";
             });
-
             socket.on('chat', (data) => procesarInput(scene, 'chat', data.comment, data.user));
             socket.on('like', (data) => procesarInput(scene, 'like', '', data.user));
             socket.on('gift', (data) => procesarInput(scene, 'gift', data.giftName, data.user));
@@ -199,36 +284,46 @@
 
         function procesarInput(scene, tipo, texto, usuario) {
             if (!gameActive) return;
-            let dir = 0; 
-            let fuerza = 0;
+            let dir = 0; let fuerza = 0;
             let msg = String(texto).toLowerCase();
             let nombreUsuario = usuario || "Anonimo";
+            let equipo = "";
 
-            if (msg.includes('angel') || msg.includes('arriba')) dir = -1;
-            else if (msg.includes('demon') || msg.includes('abajo')) dir = 1;
+            if (msg.includes('angel') || msg.includes('arriba')) { dir = -1; equipo = "ANGEL"; }
+            else if (msg.includes('demon') || msg.includes('abajo')) { dir = 1; equipo = "DEMON"; }
 
             if (tipo === 'chat' && dir !== 0) fuerza = 2;
-            else if (tipo === 'like') { fuerza = 0.5; if(Math.random()>0.5) dir = (Math.random()>0.5)? 1 : -1; }
-            else if (tipo === 'gift') { fuerza = 15; dir = (Math.random()>0.5)? 1 : -1; reproducirSonido(scene, 'gift'); }
+            else if (tipo === 'like') { 
+                fuerza = 0.5; 
+                // Asignar equipo random para efectos visuales si es like
+                if(Math.random()>0.5) { dir = -1; equipo = "ANGEL"; } 
+                else { dir = 1; equipo = "DEMON"; }
+            }
+            else if (tipo === 'gift') { 
+                fuerza = 15; 
+                if(Math.random()>0.5) { dir = -1; equipo = "ANGEL"; } 
+                else { dir = 1; equipo = "DEMON"; }
+                reproducirSonido(scene, 'gift'); 
+            }
 
             if (dir !== 0) {
                 currentPos += (fuerza * dir);
                 if (currentPos < 0) currentPos = 0;
                 if (currentPos > 100) currentPos = 100;
-                targetY = 100 + (currentPos / 100 * 1080);
                 
                 if (!usuarios[nombreUsuario]) usuarios[nombreUsuario] = { puntos: 0, equipo: (dir === -1 ? "😇" : "😈") };
                 usuarios[nombreUsuario].puntos += fuerza; 
                 usuarios[nombreUsuario].equipo = (dir === -1 ? "😇" : "😈");
+
+                // EFECTOS VISUALES NUEVOS
+                spawnEmojiExplosion(scene, tipo, equipo);
 
                 if (tipo !== 'gift' && Math.random() > 0.7) reproducirSonido(scene, 'hit');
                 chequearGanador(scene);
             }
         }
 
-        function reproducirSonido(scene, key) {
-            try { scene.sound.play(key); } catch(e) {}
-        }
+        function reproducirSonido(scene, key) { try { scene.sound.play(key); } catch(e) {} }
 
         function onTimerTick() {
             if (!gameActive) return;
@@ -246,7 +341,15 @@
             if(!gameActive) return;
             gameActive = false;
 
-            // Mostrar MVP
+            // ACTUALIZAR MARCADOR GLOBAL
+            if (bando === "angel") {
+                totalWinsAngel++;
+                document.getElementById('scoreAngel').innerText = totalWinsAngel;
+            } else if (bando === "demon") {
+                totalWinsDemon++;
+                document.getElementById('scoreDemon').innerText = totalWinsDemon;
+            }
+
             let ranking = Object.entries(usuarios).sort((a, b) => b[1].puntos - a[1].puntos).slice(0, 3);
             let mvpHtml = ranking.length === 0 ? "<div class='mvp-row'>Nadie puntuó...</div>" : "";
             ranking.forEach((u, index) => {
@@ -255,57 +358,30 @@
             });
             document.getElementById('mvpList').innerHTML = mvpHtml;
 
-            // Mostrar Overlay
             let screen = document.getElementById('winner-screen');
             let h1 = document.getElementById('winnerText');
-            screen.style.display = 'flex'; 
-            screen.className = 'winner-screen'; // Reset clases
+            screen.style.display = 'flex'; screen.className = 'winner-screen';
             
-            if (bando === "angel") {
-                screen.classList.add('win-angel');
-                h1.innerText = texto;
-                reproducirSonido(scene, 'winA');
-            } else if (bando === "demon") {
-                screen.classList.add('win-demon');
-                h1.innerText = texto;
-                reproducirSonido(scene, 'winD');
-            } else {
-                h1.innerText = "EMPATE"; h1.style.color = "white";
-            }
+            if (bando === "angel") { screen.classList.add('win-angel'); h1.innerText = texto; reproducirSonido(scene, 'winA'); }
+            else if (bando === "demon") { screen.classList.add('win-demon'); h1.innerText = texto; reproducirSonido(scene, 'winD'); }
+            else { h1.innerText = "EMPATE"; h1.style.color = "white"; }
 
-            // Cuenta regresiva
             let count = 10;
             let counterSpan = document.getElementById('restartCount');
             counterSpan.innerText = count;
-
             let int = setInterval(() => {
                 count--;
                 counterSpan.innerText = count;
-                if (count <= 0) { 
-                    clearInterval(int); 
-                    softResetGame(); // <--- SOLUCIÓN TEMA 2: REINICIO SUAVE
-                }
+                if (count <= 0) { clearInterval(int); softResetGame(); }
             }, 1000);
         }
 
-        // === FUNCIÓN MÁGICA: REINICIO SUAVE ===
-        // Restaura el juego SIN recargar la página (Adiós pantalla negra)
         function softResetGame() {
-            // 1. Resetear Variables Lógicas
-            gameActive = true;
-            timeLeft = 240;
-            currentPos = 50;
-            targetY = 640;
-            usuarios = {}; // Limpiar puntuaciones
-
-            // 2. Resetear UI
+            gameActive = true; timeLeft = 240; currentPos = 50; usuarios = {}; 
             document.getElementById('timerText').innerText = timeLeft;
             document.getElementById('winner-screen').style.display = 'none';
             document.getElementById('mvpList').innerHTML = "";
-
-            // 3. Resetear Elementos Visuales
-            // (Phaser sigue corriendo, solo movemos el jugador al centro)
-            if(player) player.y = 640;
+            if(player) player.y = centerY; 
         }
     </script>
 </body>
