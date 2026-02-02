@@ -127,6 +127,7 @@
         let game = new Phaser.Game(CONFIG);
         let socket;
         let player;
+        let flashRect; // Para el efecto de flash
         let centerX, centerY, gameHeight, gameWidth; 
         let currentPos = 50; 
         let targetY = 0;
@@ -157,15 +158,14 @@
             this.bg = this.add.image(centerX, centerY, bgKey);
             this.bg.setDisplaySize(Math.max(gameWidth, gameHeight), Math.max(gameWidth, gameHeight));
 
-            // CARRIL (Ahora más angosto)
+            // CARRIL
             this.trackBorder = this.add.graphics();
             this.trackFill = this.add.graphics();
-            this.trackLine = this.add.rectangle(centerX, centerY, 80, 4, 0xffffff).setAlpha(0.6); // Línea media también reducida
+            this.trackLine = this.add.rectangle(centerX, centerY, 80, 4, 0xffffff).setAlpha(0.6);
 
-            // JUGADOR (Más pequeño)
+            // JUGADOR (150px)
             let pKey = this.textures.exists('flame') ? 'flame' : createFallbackTexture(this, 'flame_fallback', 0x00ffff);
             player = this.add.sprite(centerX, centerY, pKey);
-            // === CAMBIO: Tamaño reducido de 240 a 150 ===
             player.setDisplaySize(150, 150);
 
             // PARTICULAS
@@ -173,7 +173,7 @@
             p.generateTexture('particle_dot', 10, 10);
             this.emitter = this.add.particles('particle_dot').createEmitter({
                 speed: { min: 50, max: 150 },
-                scale: { start: 0.8, end: 0 }, // Partículas un poco más chicas
+                scale: { start: 0.8, end: 0 }, 
                 blendMode: 'ADD',
                 lifespan: 800,
                 follow: player,
@@ -181,6 +181,11 @@
             });
 
             drawTrack(this);
+            
+            // RECTANGULO FLASH (Invisible por defecto)
+            flashRect = this.add.rectangle(centerX, centerY, gameWidth, gameHeight, 0xffffff);
+            flashRect.setAlpha(0);
+            flashRect.setDepth(100); // Siempre encima
 
             this.time.addEvent({ delay: 1000, callback: onTimerTick, loop: true });
 
@@ -195,20 +200,34 @@
                 updateDimensions(this);
                 this.bg.setPosition(centerX, centerY);
                 this.bg.setDisplaySize(Math.max(gameWidth, gameHeight * 1.2), Math.max(gameWidth, gameHeight * 1.2));
+                
+                // Actualizar flash rect
+                flashRect.setPosition(centerX, centerY);
+                flashRect.setSize(gameWidth, gameHeight);
+                
                 drawTrack(this);
             });
 
             conectarSocket(this);
         }
 
+        function triggerFlash(scene) {
+            flashRect.setAlpha(0.3); // Brillo sutil
+            scene.tweens.add({
+                targets: flashRect,
+                alpha: 0,
+                duration: 100 // Muy rápido (100ms)
+            });
+        }
+
         function spawnFloatingName(scene, name, team) {
-            let startX = player.x + (Math.random() - 0.5) * 80; // Ajustado al nuevo tamaño
+            let startX = player.x + (Math.random() - 0.5) * 80;
             let startY = player.y;
             let color = (team === "ANGEL") ? "#ffd700" : "#ff3300";
             let velocityY = (team === "ANGEL") ? -200 : 200;
             
             let text = scene.add.text(startX, startY, name, {
-                fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: color, // Fuente un poco más chica
+                fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: color,
                 stroke: "#000", strokeThickness: 3
             }).setOrigin(0.5);
 
@@ -233,22 +252,13 @@
 
         function drawTrack(scene) {
             scene.trackBorder.clear(); scene.trackFill.clear();
-            let trackH = gameHeight - 200; 
-            let trackY = 100;
-
-            // === CAMBIO: Barra más angosta (80px ancho interno, 100px externo) ===
-            // Antes era 140/120. Ahora es 100/80.
-            
-            // Borde (100px ancho total)
+            let trackH = gameHeight - 200; let trackY = 100;
             scene.trackBorder.fillStyle(0x444444, 0.5);
             scene.trackBorder.fillRoundedRect(centerX - 50, trackY - 10, 100, trackH + 20, 40);
-            
-            // Relleno (80px ancho total)
             scene.trackFill.fillStyle(0x000000, 0.4);
             scene.trackFill.fillRoundedRect(centerX - 40, trackY, 80, trackH, 40);
-            
             scene.trackLine.setPosition(centerX, centerY);
-            scene.trackLine.width = 90; // Línea media ajustada
+            scene.trackLine.width = 90;
         }
         
         function resize (gameSize, baseSize, displaySize, resolution) { updateDimensions(this); }
@@ -261,7 +271,9 @@
             if (!gameActive) return;
             let trackH = gameHeight - 200;
             targetY = 100 + (currentPos / 100 * trackH);
-            player.y = Phaser.Math.Linear(player.y, targetY, 0.1);
+            
+            // === CAMBIO: LERP AUMENTADO A 0.3 (Más rápido/snappy) ===
+            player.y = Phaser.Math.Linear(player.y, targetY, 0.3);
             player.x = centerX;
 
             if (currentPos < 40) { player.setTint(COL_ANGEL); this.emitter.setTint(COL_ANGEL); } 
@@ -270,13 +282,17 @@
 
             let intensity = (Math.abs(currentPos - 50) / 50);
             let beatSpeed = 200 - (intensity * 100); 
-            // Ajustado al nuevo tamaño base de 150
             player.scaleX = (150/player.width) + Math.sin(this.time.now / beatSpeed) * (0.05 + intensity * 0.05);
         }
 
         function conectarSocket(scene) {
-            socket = io("https://tiktok-server-lmc9.onrender.com");
-            socket.on('connect', () => { document.getElementById('statusText').innerText = "EN VIVO"; });
+            // === CAMBIO: Forzar WebSockets para menos delay ===
+            socket = io("https://tiktok-server-lmc9.onrender.com", {
+                transports: ['websocket'], 
+                upgrade: false
+            });
+            
+            socket.on('connect', () => { document.getElementById('statusText').innerText = "EN VIVO - TURBO"; });
             socket.on('chat', (data) => procesarInput(scene, 'chat', data.comment, data.user));
             socket.on('like', (data) => procesarInput(scene, 'like', '', data.user));
             socket.on('gift', (data) => procesarInput(scene, 'gift', data.giftName, data.user));
@@ -315,7 +331,11 @@
 
                 if (tipo !== 'like') spawnFloatingName(scene, nombreUsuario, equipo);
 
-                if (tipo !== 'gift' && Math.random() > 0.7) reproducirSonido(scene, 'hit');
+                if (tipo !== 'gift' && Math.random() > 0.7) {
+                    reproducirSonido(scene, 'hit');
+                    // === NUEVO: Flashazo Visual ===
+                    triggerFlash(scene);
+                }
                 chequearGanador(scene);
             }
         }
